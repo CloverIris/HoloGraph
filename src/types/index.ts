@@ -645,6 +645,7 @@ export interface AppSettings {
     autoSummarize: boolean
     summarizeThreshold: number
     actionConfirm: boolean
+    oobeCompleted?: boolean
   }
   
   // 快捷键

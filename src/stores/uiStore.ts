@@ -29,6 +29,7 @@ const defaultSettings: AppSettings = {
     autoSummarize: true,
     summarizeThreshold: 10,
     actionConfirm: true,
+    oobeCompleted: false,
   },
   keyboard: {
     newNode: 'ctrl+n',
@@ -70,6 +71,10 @@ interface UIStateExtended extends UIState {
   toggleStreamAnimations: () => void
   setDarkMode: (enabled: boolean) => void
   getActiveSession: () => null
+  
+  // OOBE
+  showOOBE: boolean
+  setShowOOBE: (show: boolean) => void
 }
 
 export const useUIStore = create<UIStateExtended>()(
@@ -91,6 +96,9 @@ export const useUIStore = create<UIStateExtended>()(
         sidebarTab: 'files',
         showLODIndicator: false,
         streamAnimations: true,
+        
+        // OOBE
+        showOOBE: false,
         
         // 设置
         settings: defaultSettings,
@@ -185,6 +193,8 @@ export const useUIStore = create<UIStateExtended>()(
         },
         
         getActiveSession: () => null,
+        
+        setShowOOBE: (show) => set({ showOOBE: show }),
       }),
       {
         name: 'ui-store',

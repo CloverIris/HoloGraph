@@ -165,6 +165,9 @@ interface GraphState {
   exportData: () => { nodes: KnowledgeNode[]; edges: KnowledgeEdge[] }
   importData: (data: { nodes: KnowledgeNode[]; edges: KnowledgeEdge[] }) => Promise<void>
   clearGraph: () => Promise<void>
+  
+  // ===== 设置整个图 =====
+  setGraph: (data: { nodes: KnowledgeNode[]; edges: KnowledgeEdge[] }) => void
 }
 
 // ============================================
@@ -684,6 +687,18 @@ export const useGraphStore = create<GraphState>()(
           selectedNodeId: null,
           selectedEdgeId: null,
         })
+      },
+      
+      setGraph: (data) => {
+        set({
+          nodes: data.nodes,
+          edges: data.edges,
+          selectedNodeId: null,
+          selectedEdgeId: null,
+        })
+        // 保存到存储
+        storageService.saveNodes(data.nodes)
+        storageService.saveEdges(data.edges)
       },
     }),
     { name: 'graph-store' }

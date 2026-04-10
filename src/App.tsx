@@ -4,7 +4,7 @@ import { Sidebar } from '@components/Sidebar'
 import { Toolbar } from '@components/Toolbar'
 import { NodePanel } from '@components/NodePanel'
 import { SearchBox } from '@components/SearchBox'
-import { WelcomeModal } from '@components/WelcomeModal'
+import { OOBE } from '@components/OOBE'
 import { useGraphStore } from '@stores/graphStore'
 import { useUIStore } from '@stores/uiStore'
 import { useSessionStore } from '@stores/sessionStore'
@@ -25,7 +25,7 @@ function App() {
     createBranchNode,
     deleteNode,
   } = useGraphStore()
-  const { sidebarOpen, rightPanelOpen } = useUIStore()
+  const { sidebarOpen, rightPanelOpen, settings, showOOBE, setShowOOBE } = useUIStore()
   const { getActiveSession } = useSessionStore()
   
   const activeSession = getActiveSession()
@@ -87,6 +87,16 @@ function App() {
     init()
   }, [loadNodes, loadEdges])
 
+  // Check if OOBE should be shown on first launch
+  useEffect(() => {
+    if (!isLoading && !settings.behavior?.oobeCompleted && !showOOBE) {
+      const timer = setTimeout(() => {
+        setShowOOBE(true)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [isLoading, settings.behavior?.oobeCompleted])
+
   // Auto-save effect
   useEffect(() => {
     if (isLoading) return
@@ -110,8 +120,11 @@ function App() {
 
   return (
     <div className="app">
-      {/* Welcome Modal */}
-      <WelcomeModal onClose={() => {}} />
+      {/* OOBE Modal */}
+      <OOBE 
+        isOpen={showOOBE} 
+        onClose={() => setShowOOBE(false)}
+      />
 
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
