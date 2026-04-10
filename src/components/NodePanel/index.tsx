@@ -6,10 +6,17 @@ import {
   Clock,
   Network,
   Sparkles,
-  GitBranch
+  GitBranch,
+  MessageSquare,
+  FileText,
+  Lightbulb,
+  Loader2
 } from 'lucide-react'
 import { useGraphStore } from '@stores/graphStore'
 import { useUIStore } from '@stores/uiStore'
+import { useSessionStore } from '@stores/sessionStore'
+import { aiService, streamingUpdater } from '@services/aiService'
+import { ConversationBreadcrumb, ThreadNavigator } from '@components/ConversationNav'
 import type { NodeType, KnowledgeNode } from '@mytypes'
 import './NodePanel.css'
 
@@ -24,18 +31,31 @@ const nodeTypes: { value: NodeType; label: string; color: string }[] = [
 
 export function NodePanel() {
   const { toggleRightPanel } = useUIStore()
+  const { getActiveSession } = useSessionStore()
   const { 
     nodes, 
     selectedNodeId,
     selectNode,
     addEdge,
-    getNodeNeighbors 
+    getNodeNeighbors,
+    createAIResponseNode,
+    createBranchNode,
+    getConversationThread,
   } = useGraphStore()
 
   const [isEditing, setIsEditing] = useState(false)
   const [editedNode, setEditedNode] = useState<Partial<KnowledgeNode>>({})
   const [newTag, setNewTag] = useState('')
-  const [activeTab, setActiveTab] = useState<'details' | 'connections' | 'ai'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'connections' | 'ai' | 'thread'>('details')
+  
+  // AI states
+  const [isAskingAI, setIsAskingAI] = useState(false)
+  const [isSummarizing, setIsSummarizing] = useState(false)
+  const [analysisResult, setAnalysisResult] = useState<{
+    summary?: string
+    keyPoints?: string[]
+    actionItems?: string[]
+  } | null>(null)
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
   const neighbors = selectedNode ? getNodeNeighbors(selectedNode.id) : { nodes: [], edges: [] }
@@ -155,6 +175,13 @@ export function NodePanel() {
         >
           <Sparkles size={14} />
           AI
+        </button>
+        <button 
+          className={activeTab === 'thread' ? 'active' : ''}
+          onClick={() => setActiveTab('thread')}
+        >
+          <MessageSquare size={14} />
+          Thread
         </button>
       </div>
 
@@ -313,26 +340,75 @@ export function NodePanel() {
         )}
 
         {activeTab === 'ai' && (
-          <div className="tab-content ai-tab">
-            <div className="ai-section">
-              <h4>
-                <Sparkles size={16} />
-                AI Analysis
-              </h4>
-              <button className="btn btn-secondary" style={{ width: '100%' }}>
-                Analyze Content
-              </button>
-            </div>
-
-            <div className="ai-section">
-              <h4>Related Concepts</h4>
-              <p className="placeholder-text">Use AI to analyze and find related concepts</p>
-            </div>
-
-            <div className="ai-section">
-              <h4>Summary</h4>
-              <p className="placeholder-text">AI will generate a summary for you</p>
-            </div>
+          <AITabContent
+            selectedNode={selectedNode}
+            isAskingAI={isAskingAI}
+            isSummarizing={isSummarizing}
+            analysisResult={analysisResult}
+            onAskAI={async () => {
+              if (!selectedNode) return
+              setIsAskingAI(true)
+              try {
+                const session = getActiveSession()
+                const aiNode = await createAIResponseNode({
+                  parentId: selectedNode.id,
+                  sessionId: session?.id,
+                })
+                
+                // Build context and stream
+                const messages = aiService.buildContext(aiNode)
+                await streamingUpdater.startStreaming(
+                  aiNode.id,
+                  messages,
+                  aiNode.metadata?.aiConfig
+                )
+              } catch (error) {
+                console.error('Failed to ask AI:', error)
+              } finally {
+                setIsAskingAI(false)
+              }
+            }}
+            onCreateBranch={async () => {
+              if (!selectedNode) return
+              const session = getActiveSession()
+              await createBranchNode({
+                parentId: selectedNode.id,
+                sessionId: session?.id,
+              })
+            }}
+            onSummarize={async () => {
+              if (!selectedNode) return
+              setIsSummarizing(true)
+              try {
+                const thread = getConversationThread(selectedNode.id)
+                const summary = await aiService.generateSummary(thread)
+                setAnalysisResult({ summary })
+              } catch (error) {
+                console.error('Failed to summarize:', error)
+              } finally {
+                setIsSummarizing(false)
+              }
+            }}
+            onAnalyze={async () => {
+              if (!selectedNode) return
+              try {
+                const result = await aiService.analyzeContent(selectedNode.content)
+                setAnalysisResult({
+                  summary: result.summary,
+                  keyPoints: result.concepts,
+                  actionItems: result.relatedConcepts,
+                })
+              } catch (error) {
+                console.error('Failed to analyze:', error)
+              }
+            }}
+          />
+        )}
+        
+        {activeTab === 'thread' && selectedNodeId && (
+          <div className="tab-content thread-tab">
+            <ConversationBreadcrumb nodeId={selectedNodeId} />
+            <ThreadNavigator nodeId={selectedNodeId} />
           </div>
         )}
       </div>
@@ -471,6 +547,144 @@ function NewNodePanel({ onClose }: { onClose: () => void }) {
         >
           Create Node
         </button>
+      </div>
+    </div>
+  )
+}
+
+
+// AI Tab Content Component
+interface AITabContentProps {
+  selectedNode: KnowledgeNode
+  isAskingAI: boolean
+  isSummarizing: boolean
+  analysisResult: {
+    summary?: string
+    keyPoints?: string[]
+    actionItems?: string[]
+  } | null
+  onAskAI: () => void
+  onCreateBranch: () => void
+  onSummarize: () => void
+  onAnalyze: () => void
+}
+
+function AITabContent({
+  selectedNode,
+  isAskingAI,
+  isSummarizing,
+  analysisResult,
+  onAskAI,
+  onCreateBranch,
+  onSummarize,
+  onAnalyze,
+}: AITabContentProps) {
+  return (
+    <div className="tab-content ai-tab">
+      {/* Quick Actions */}
+      <div className="ai-section">
+        <h4>Quick Actions</h4>
+        <div className="ai-actions-grid">
+          <button 
+            className="btn-ai-action primary"
+            onClick={onAskAI}
+            disabled={isAskingAI}
+          >
+            {isAskingAI ? (
+              <Loader2 size={18} className="spin" />
+            ) : (
+              <Sparkles size={18} />
+            )}
+            Ask AI
+          </button>
+          <button 
+            className="btn-ai-action"
+            onClick={onCreateBranch}
+          >
+            <GitBranch size={18} />
+            Branch
+          </button>
+          <button 
+            className="btn-ai-action"
+            onClick={onSummarize}
+            disabled={isSummarizing}
+          >
+            {isSummarizing ? (
+              <Loader2 size={18} className="spin" />
+            ) : (
+              <FileText size={18} />
+            )}
+            Summarize
+          </button>
+          <button 
+            className="btn-ai-action"
+            onClick={onAnalyze}
+          >
+            <Lightbulb size={18} />
+            Analyze
+          </button>
+        </div>
+      </div>
+
+      {/* Analysis Results */}
+      {analysisResult && (
+        <div className="ai-section results">
+          {analysisResult.summary && (
+            <div className="result-item">
+              <h5>Summary</h5>
+              <p>{analysisResult.summary}</p>
+            </div>
+          )}
+          
+          {analysisResult.keyPoints && analysisResult.keyPoints.length > 0 && (
+            <div className="result-item">
+              <h5>Key Points</h5>
+              <ul>
+                {analysisResult.keyPoints.map((point, i) => (
+                  <li key={i}>{point}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {analysisResult.actionItems && analysisResult.actionItems.length > 0 && (
+            <div className="result-item">
+              <h5>Related Concepts</h5>
+              <div className="tag-list">
+                {analysisResult.actionItems.map((item, i) => (
+                  <span key={i} className="tag">{item}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Node Info */}
+      <div className="ai-section info">
+        <h4>Node Info</h4>
+        <div className="info-grid">
+          <div className="info-item">
+            <span className="info-label">Type</span>
+            <span className="info-value">{selectedNode.type}</span>
+          </div>
+          <div className="info-item">
+            <span className="info-label">Status</span>
+            <span className="info-value">{selectedNode.metadata?.status || 'idle'}</span>
+          </div>
+          {selectedNode.metadata?.aiResponse && (
+            <>
+              <div className="info-item">
+                <span className="info-label">Model</span>
+                <span className="info-value">{selectedNode.metadata.aiResponse.model}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Tokens</span>
+                <span className="info-value">{selectedNode.metadata.aiResponse.tokens?.total || 'N/A'}</span>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
