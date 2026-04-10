@@ -3,13 +3,13 @@
   "productName": "HoloGraph",
   "version": "1.0.0",
   "description": "全像星图 - 个人知识图谱化工具",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/electron/main.js",
   "author": "CloverIris",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "build": "tsc -p tsconfig.node.json && tsc -p tsconfig.preload.json && vite build && electron-builder",
     "build:win": "tsc && vite build && electron-builder --win",
     "build:mac": "tsc && vite build && electron-builder --mac",
     "build:linux": "tsc && vite build && electron-builder --linux",
@@ -17,7 +17,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.68",
+    "@ai-sdk/openai": "^3.0.52",
     "@xyflow/react": "^12.3.0",
+    "ai": "^6.0.156",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
     "framer-motion": "^11.11.0",

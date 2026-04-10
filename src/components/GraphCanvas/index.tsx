@@ -1,11 +1,23 @@
 import { useRef, useState, useCallback } from 'react'
 import { useGraphStore } from '@stores/graphStore'
 import { useUIStore } from '@stores/uiStore'
+import { ContextMenu } from '@components/ContextMenu'
+import { InlineEditor } from '@components/InlineEditor'
 import type { KnowledgeNode, KnowledgeEdge } from '@mytypes'
 import './GraphCanvas.css'
 
-// Node colors
-const nodeColors: Record<string, { bg: string; border: string; glow: string }> = {
+// Node type colors - updated for conversation system
+const nodeTypeColors: Record<string, { bg: string; border: string; glow: string }> = {
+  // New conversation types
+  block: { bg: 'rgba(76, 175, 80, 0.2)', border: '#4caf50', glow: 'rgba(76, 175, 80, 0.4)' },
+  'ai-response': { bg: 'rgba(33, 150, 243, 0.2)', border: '#2196f3', glow: 'rgba(33, 150, 243, 0.4)' },
+  branch: { bg: 'rgba(255, 152, 0, 0.2)', border: '#ff9800', glow: 'rgba(255, 152, 0, 0.4)' },
+  summary: { bg: 'rgba(156, 39, 176, 0.2)', border: '#9c27b0', glow: 'rgba(156, 39, 176, 0.4)' },
+  todo: { bg: 'rgba(233, 30, 99, 0.2)', border: '#e91e63', glow: 'rgba(233, 30, 99, 0.4)' },
+  action: { bg: 'rgba(0, 188, 212, 0.2)', border: '#00bcd4', glow: 'rgba(0, 188, 212, 0.4)' },
+  knowledge: { bg: 'rgba(121, 85, 72, 0.2)', border: '#795548', glow: 'rgba(121, 85, 72, 0.4)' },
+  session: { bg: 'rgba(96, 125, 139, 0.2)', border: '#607d8b', glow: 'rgba(96, 125, 139, 0.4)' },
+  // Legacy types
   concept: { bg: 'rgba(0, 120, 212, 0.2)', border: '#0078d4', glow: 'rgba(0, 120, 212, 0.4)' },
   note: { bg: 'rgba(16, 124, 16, 0.2)', border: '#107c10', glow: 'rgba(16, 124, 16, 0.4)' },
   code: { bg: 'rgba(255, 140, 0, 0.2)', border: '#ff8c00', glow: 'rgba(255, 140, 0, 0.4)' },
@@ -13,6 +25,8 @@ const nodeColors: Record<string, { bg: string; border: string; glow: string }> =
   tweet: { bg: 'rgba(0, 183, 195, 0.2)', border: '#00b7c3', glow: 'rgba(0, 183, 195, 0.4)' },
   reference: { bg: 'rgba(135, 100, 184, 0.2)', border: '#8764b8', glow: 'rgba(135, 100, 184, 0.4)' },
 }
+
+
 
 // FIXED: Use constant viewBox for simplicity
 const VIEWBOX_WIDTH = 1000
@@ -26,6 +40,16 @@ export function GraphCanvas() {
   const [isPanning, setIsPanning] = useState(false)
   const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 })
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
+  
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    node: KnowledgeNode | null
+  } | null>(null)
+  
+  // Inline editing state
+  const [inlineEditingNodeId, setInlineEditingNodeId] = useState<string | null>(null)
 
   const { 
     nodes, 
@@ -36,7 +60,11 @@ export function GraphCanvas() {
     selectNode, 
     updateNode,
     getNodeNeighbors,
-    resetView
+    resetView,
+    createNode,
+    createAIResponseNode,
+    createBranchNode,
+    deleteNode,
   } = useGraphStore()
   const { showLabels } = useUIStore()
 
@@ -78,6 +106,126 @@ export function GraphCanvas() {
     setIsDragging(false)
   }, [])
 
+  // Double click to create new block
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    // Only handle if clicking on empty canvas (not on nodes)
+    if (e.target === svgRef.current || (e.target as Element).tagName === 'rect') {
+      e.preventDefault()
+      
+      const rect = svgRef.current?.getBoundingClientRect()
+      if (!rect) return
+      
+      const x = (e.clientX - rect.left) / viewBox.zoom + viewBox.x
+      const y = (e.clientY - rect.top) / viewBox.zoom + viewBox.y
+      
+      // Create new block node
+      createNode({
+        label: 'New Block',
+        content: '',
+        type: 'block',
+        position: { x, y },
+      }).then((node) => {
+        selectNode(node.id)
+        setInlineEditingNodeId(node.id)
+      })
+    }
+  }, [viewBox.zoom, viewBox.x, viewBox.y, createNode, selectNode])
+
+  // Right click context menu
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    
+    // Check if clicking on a node
+    const target = e.target as Element
+    const nodeElement = target.closest('[data-node-id]')
+    const nodeId = nodeElement?.getAttribute('data-node-id')
+    const node = nodeId ? nodes.find((n) => n.id === nodeId) : null
+    
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      node: node || null,
+    })
+  }, [nodes])
+
+  // Close context menu
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null)
+  }, [])
+
+  // Context menu actions
+  const handleEditNode = useCallback(() => {
+    if (contextMenu?.node) {
+      setInlineEditingNodeId(contextMenu.node.id)
+    } else {
+      // Create new node if no node selected
+      const rect = svgRef.current?.getBoundingClientRect()
+      if (rect) {
+        const x = (contextMenu!.x - rect.left) / viewBox.zoom + viewBox.x
+        const y = (contextMenu!.y - rect.top) / viewBox.zoom + viewBox.y
+        
+        createNode({
+          label: 'New Block',
+          content: '',
+          type: 'block',
+          position: { x, y },
+        }).then((node) => {
+          selectNode(node.id)
+          setInlineEditingNodeId(node.id)
+        })
+      }
+    }
+  }, [contextMenu, viewBox, createNode, selectNode])
+
+  const handleAskAI = useCallback(() => {
+    if (contextMenu?.node) {
+      createAIResponseNode({
+        parentId: contextMenu.node.id,
+        sessionId: contextMenu.node.metadata?.sessionId || '',
+        aiConfig: contextMenu.node.metadata?.aiConfig || { provider: 'openai', model: 'gpt-4o-mini' },
+      })
+    }
+  }, [contextMenu, createAIResponseNode])
+
+  const handleCreateBranch = useCallback(() => {
+    if (contextMenu?.node) {
+      createBranchNode({
+        parentId: contextMenu.node.id,
+        sessionId: contextMenu.node.metadata?.sessionId || '',
+      })
+    }
+  }, [contextMenu, createBranchNode])
+
+  const handleSummarize = useCallback(() => {
+    // TODO: Implement summarize
+    console.log('Summarize:', contextMenu?.node?.id)
+  }, [contextMenu])
+
+  const handleConnect = useCallback(() => {
+    // TODO: Implement connect mode
+    console.log('Connect:', contextMenu?.node?.id)
+  }, [contextMenu])
+
+  const handleDuplicate = useCallback(() => {
+    // TODO: Implement duplicate
+    console.log('Duplicate:', contextMenu?.node?.id)
+  }, [contextMenu])
+
+  const handleDeleteNode = useCallback(() => {
+    if (contextMenu?.node) {
+      deleteNode(contextMenu.node.id)
+    }
+  }, [contextMenu, deleteNode])
+
+  // Inline editor handlers
+  const handleSaveInlineEdit = useCallback(() => {
+    setInlineEditingNodeId(null)
+  }, [])
+
+  const handleCancelInlineEdit = useCallback(() => {
+    setInlineEditingNodeId(null)
+  }, [])
+
   // Calculate highlighted nodes
   const highlightedNodes = selectedNodeId && selectedNodeId !== 'new'
     ? getNodeNeighbors(selectedNodeId).nodes.map((n) => n.id)
@@ -108,6 +256,8 @@ export function GraphCanvas() {
     )
   }
 
+  // Get inline editing node (used in rendering below via inlineEditingNodeId)
+
   return (
     <div 
       ref={containerRef}
@@ -117,6 +267,8 @@ export function GraphCanvas() {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       style={{ cursor: isPanning ? 'grabbing' : 'default' }}
     >
       <svg
@@ -194,25 +346,50 @@ export function GraphCanvas() {
               node.id !== selectedNodeId && 
               !isHighlighted
             )
+            const isEditing = node.id === inlineEditingNodeId
 
             return (
-              <NodeCircle
-                key={node.id}
-                node={node}
-                isSelected={isSelected}
-                isHighlighted={isHighlighted}
-                isHovered={isHovered}
-                isDimmed={isDimmed}
-                showLabel={showLabels}
-                onClick={() => selectNode(node.id)}
-                onMouseDown={(e) => {
-                  e.stopPropagation()
-                  setDragNode(node.id)
-                  setIsDragging(true)
-                }}
-                onMouseEnter={() => setHoveredNode(node.id)}
-                onMouseLeave={() => setHoveredNode(null)}
-              />
+              <g key={node.id} data-node-id={node.id}>
+                <NodeCircle
+                  node={node}
+                  isSelected={isSelected}
+                  isHighlighted={isHighlighted}
+                  isHovered={isHovered}
+                  isDimmed={isDimmed}
+                  showLabel={showLabels}
+                  onClick={() => {
+                    if (!isEditing) {
+                      selectNode(node.id)
+                    }
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation()
+                    if (!isEditing) {
+                      setDragNode(node.id)
+                      setIsDragging(true)
+                    }
+                  }}
+                  onMouseEnter={() => setHoveredNode(node.id)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                />
+                
+                {/* Inline Editor */}
+                {isEditing && (
+                  <foreignObject
+                    x={node.position.x - 140}
+                    y={node.position.y + 30}
+                    width={280}
+                    height={200}
+                  >
+                    <InlineEditor
+                      nodeId={node.id}
+                      initialContent={node.content}
+                      onSave={handleSaveInlineEdit}
+                      onCancel={handleCancelInlineEdit}
+                    />
+                  </foreignObject>
+                )}
+              </g>
             )
           })}
         </g>
@@ -238,6 +415,23 @@ export function GraphCanvas() {
       >
         +
       </button>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          node={contextMenu.node}
+          onClose={handleCloseContextMenu}
+          onEdit={handleEditNode}
+          onAskAI={handleAskAI}
+          onCreateBranch={handleCreateBranch}
+          onSummarize={handleSummarize}
+          onConnect={handleConnect}
+          onDuplicate={handleDuplicate}
+          onDelete={handleDeleteNode}
+        />
+      )}
     </div>
   )
 }
@@ -323,10 +517,169 @@ function NodeCircle({
   onMouseEnter,
   onMouseLeave
 }: NodeCircleProps) {
-  const colors = nodeColors[node.type] || nodeColors.concept
+  const colors = nodeTypeColors[node.type] || nodeTypeColors.block
   const size = isSelected ? 26 : isHighlighted ? 24 : 20
   const glowOpacity = isSelected ? 0.8 : isHovered ? 0.5 : 0.3
+  const isStreaming = node.metadata?.status === 'streaming'
+  const isBlockNode = node.type === 'block' || node.type === 'concept' || node.type === 'note'
+  const isAIResponse = node.type === 'ai-response' || node.type === 'idea'
 
+  // Block-style node (rectangle)
+  if (isBlockNode) {
+    const width = 140
+    const height = 50
+    
+    return (
+      <g 
+        className={`node node-block ${isSelected ? 'selected' : ''} ${isHighlighted ? 'highlighted' : ''} ${isDimmed ? 'dimmed' : ''}`}
+        onClick={onClick}
+        onMouseDown={onMouseDown}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        style={{ cursor: 'pointer' }}
+      >
+        {/* Glow */}
+        <rect
+          x={node.position.x - width/2 - 10}
+          y={node.position.y - height/2 - 10}
+          width={width + 20}
+          height={height + 20}
+          rx={20}
+          fill={colors.glow}
+          opacity={glowOpacity}
+          filter="url(#glow)"
+        />
+        
+        {/* Main rectangle */}
+        <rect
+          x={node.position.x - width/2}
+          y={node.position.y - height/2}
+          width={width}
+          height={height}
+          rx={12}
+          fill={colors.bg}
+          stroke={isSelected ? colors.border : 'rgba(255,255,255,0.2)'}
+          strokeWidth={isSelected ? 3 : 1}
+        />
+        
+        {/* Content preview */}
+        {node.content && (
+          <foreignObject
+            x={node.position.x - width/2 + 8}
+            y={node.position.y - height/2 + 8}
+            width={width - 16}
+            height={height - 16}
+          >
+            <div className="node-content-preview">
+              {node.content.slice(0, 50)}{node.content.length > 50 ? '...' : ''}
+            </div>
+          </foreignObject>
+        )}
+
+        {/* Label */}
+        {showLabel && (
+          <text
+            x={node.position.x}
+            y={node.position.y + height/2 + 16}
+            fill="white"
+            fontSize="11"
+            fontWeight={isSelected ? 600 : 400}
+            textAnchor="middle"
+            style={{ opacity: isDimmed ? 0.3 : 1 }}
+          >
+            {node.label}
+          </text>
+        )}
+        
+        {/* Streaming indicator */}
+        {isStreaming && <StreamingIndicator x={node.position.x + width/2 + 10} y={node.position.y} />}
+      </g>
+    )
+  }
+
+  // AI Response node (circle with special styling)
+  if (isAIResponse) {
+    return (
+      <g 
+        className={`node node-ai ${isSelected ? 'selected' : ''} ${isHighlighted ? 'highlighted' : ''} ${isDimmed ? 'dimmed' : ''}`}
+        onClick={onClick}
+        onMouseDown={onMouseDown}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        style={{ cursor: 'pointer' }}
+      >
+        {/* Glow */}
+        <circle
+          cx={node.position.x}
+          cy={node.position.y}
+          r={size + 12}
+          fill={colors.glow}
+          opacity={isStreaming ? 0.6 : glowOpacity}
+          filter="url(#glow)"
+        >
+          {isStreaming && (
+            <animate
+              attributeName="opacity"
+              values="0.3;0.7;0.3"
+              dur="2s"
+              repeatCount="indefinite"
+            />
+          )}
+        </circle>
+        
+        {/* Main circle */}
+        <circle
+          cx={node.position.x}
+          cy={node.position.y}
+          r={size}
+          fill={colors.bg}
+          stroke={colors.border}
+          strokeWidth={isSelected ? 3 : 2}
+        />
+        
+        {/* AI sparkle icon */}
+        <g transform={`translate(${node.position.x - 8}, ${node.position.y - 8})`}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={colors.border} strokeWidth="2">
+            <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
+          </svg>
+        </g>
+        
+        {/* Content preview */}
+        {node.content && (
+          <foreignObject
+            x={node.position.x - 60}
+            y={node.position.y + size + 5}
+            width={120}
+            height={60}
+          >
+            <div className="node-content-preview ai">
+              {node.content.slice(0, 80)}{node.content.length > 80 ? '...' : ''}
+            </div>
+          </foreignObject>
+        )}
+
+        {/* Label */}
+        {showLabel && (
+          <text
+            x={node.position.x}
+            y={node.position.y - size - 10}
+            fill={colors.border}
+            fontSize="10"
+            fontWeight={600}
+            textAnchor="middle"
+            style={{ opacity: isDimmed ? 0.3 : 1 }}
+          >
+            AI
+          </text>
+        )}
+        
+        {/* Streaming indicator */}
+        {isStreaming && <StreamingIndicator x={node.position.x + size + 10} y={node.position.y} />}
+      </g>
+    )
+  }
+
+  // Default circle node for other types
   return (
     <g 
       className={`node ${isSelected ? 'selected' : ''} ${isHighlighted ? 'highlighted' : ''} ${isDimmed ? 'dimmed' : ''}`}
@@ -390,6 +743,45 @@ function NodeCircle({
           {node.label}
         </text>
       )}
+      
+      {/* Streaming indicator */}
+      {isStreaming && <StreamingIndicator x={node.position.x + size + 8} y={node.position.y} />}
+    </g>
+  )
+}
+
+
+// Streaming indicator component
+function StreamingIndicator({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x}, ${y - 10})`}>
+      {/* Typing animation dots */}
+      <circle cx={0} cy={0} r={3} fill="#64b5f6">
+        <animate
+          attributeName="opacity"
+          values="0.3;1;0.3"
+          dur="1s"
+          repeatCount="indefinite"
+        />
+      </circle>
+      <circle cx={8} cy={0} r={3} fill="#64b5f6">
+        <animate
+          attributeName="opacity"
+          values="0.3;1;0.3"
+          dur="1s"
+          begin="0.2s"
+          repeatCount="indefinite"
+        />
+      </circle>
+      <circle cx={16} cy={0} r={3} fill="#64b5f6">
+        <animate
+          attributeName="opacity"
+          values="0.3;1;0.3"
+          dur="1s"
+          begin="0.4s"
+          repeatCount="indefinite"
+        />
+      </circle>
     </g>
   )
 }

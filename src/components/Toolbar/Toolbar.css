@@ -1,77 +1,419 @@
+/* =============================================
+   HoloGraph Advanced Toolbar
+   ============================================= */
+
 .toolbar-content {
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  height: 100%;
+  padding: 0 16px;
+  background: linear-gradient(180deg, 
+    rgba(26, 26, 36, 0.95) 0%,
+    rgba(18, 18, 26, 0.98) 100%
+  );
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
 }
+
+/* =============================================
+   Toolbar Sections
+   ============================================= */
 
 .toolbar-section {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .toolbar-section.center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  flex: 1;
+  justify-content: center;
 }
+
+.toolbar-section.right {
+  gap: 4px;
+}
+
+/* =============================================
+   Tool Groups (Glassmorphism Cards)
+   ============================================= */
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.tool-group:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.tool-group-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 8px;
+  margin-right: 4px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* =============================================
+   Toolbar Buttons
+   ============================================= */
+
+.toolbar-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+}
+
+.toolbar-btn:active {
+  transform: translateY(0);
+}
+
+.toolbar-btn.active {
+  background: linear-gradient(135deg, 
+    rgba(99, 102, 241, 0.2) 0%,
+    rgba(139, 92, 246, 0.2) 100%
+  );
+  color: #8b5cf6;
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.3);
+}
+
+.toolbar-btn.primary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.toolbar-btn.primary:hover {
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+  transform: translateY(-1px);
+}
+
+.toolbar-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* Icon Only Button */
+.toolbar-btn.icon-only {
+  padding: 8px;
+}
+
+/* Button Label */
+.btn-label {
+  font-size: 12px;
+}
+
+/* Button Shortcut */
+.btn-shortcut {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.toolbar-btn:hover .btn-shortcut {
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* =============================================
+   Zoom Control (Special Style)
+   ============================================= */
+
+.zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+}
+
+.zoom-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.zoom-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.zoom-level {
+  min-width: 52px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  font-variant-numeric: tabular-nums;
+}
+
+/* =============================================
+   Brand / Logo
+   ============================================= */
+
+.toolbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 12px;
+  margin-right: 4px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.brand-logo svg {
+  width: 18px;
+  height: 18px;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.7) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.2;
+}
+
+.brand-tagline {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* =============================================
+   Dropdown Menu
+   ============================================= */
+
+.toolbar-dropdown {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 200px;
+  background: linear-gradient(145deg, 
+    rgba(30, 30, 42, 0.98) 0%,
+    rgba(22, 22, 32, 0.98) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(20px);
+  z-index: 1000;
+  animation: dropdownIn 0.15s ease;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.dropdown-item svg {
+  width: 16px;
+  height: 16px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.dropdown-item:hover svg {
+  color: #8b5cf6;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 6px 0;
+}
+
+.dropdown-shortcut {
+  margin-left: auto;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* =============================================
+   Status Indicator
+   ============================================= */
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 20px;
+  font-size: 11px;
+  color: #10b981;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  background: #10b981;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* =============================================
+   Divider
+   ============================================= */
 
 .toolbar-divider {
   width: 1px;
   height: 24px;
-  background: rgba(100, 181, 246, 0.2);
-  margin: 0 4px;
+  background: linear-gradient(180deg, 
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  margin: 0 8px;
 }
 
-.toolbar-title {
-  font-size: 15px;
-  font-weight: 500;
-  color: #e3f2fd;
-  letter-spacing: 0.02em;
+/* =============================================
+   Responsive Adjustments
+   ============================================= */
+
+@media (max-width: 1200px) {
+  .btn-label {
+    display: none;
+  }
+  
+  .toolbar-btn {
+    padding: 8px;
+  }
+  
+  .tool-group-label {
+    display: none;
+  }
 }
 
-/* View Controls */
-.view-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 4px;
-  border-radius: 10px;
-  border: 1px solid rgba(100, 181, 246, 0.1);
+@media (max-width: 900px) {
+  .brand-tagline {
+    display: none;
+  }
+  
+  .toolbar-section.center {
+    display: none;
+  }
 }
 
-.zoom-level {
-  min-width: 50px;
-  text-align: center;
-  font-size: 13px;
-  color: rgba(227, 242, 253, 0.8);
-  font-variant-numeric: tabular-nums;
+/* =============================================
+   Tooltip Enhancement
+   ============================================= */
+
+.toolbar-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.9);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.15s ease;
+  z-index: 1001;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.view-toggles {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.view-toggles .btn-icon.active {
-  background: rgba(100, 181, 246, 0.2);
-  color: #64b5f6;
-}
-
-/* Button Styles */
-.toolbar-content .btn-icon {
-  color: rgba(227, 242, 253, 0.6);
-}
-
-.toolbar-content .btn-icon:hover {
-  color: #64b5f6;
-  background: rgba(100, 181, 246, 0.1);
-}
-
-.toolbar-content .btn-icon.active {
-  color: #64b5f6;
+.toolbar-btn[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-4px);
 }

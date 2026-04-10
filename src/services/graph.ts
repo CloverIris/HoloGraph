@@ -9,7 +9,7 @@ export const graphAlgorithms = {
   ): PathResult | null {
     if (fromId === toId || !fromId || !toId) {
       const node = nodes.find((n) => n.id === fromId)
-      return node ? { nodes: [node], edges: [], distance: 0 } : null
+      return node ? { nodes: [node], edges: [], distance: 0, path: [fromId] } : null
     }
 
     const adj = new Map<string, Array<{ to: string; edge: KnowledgeEdge; weight: number }>>()
@@ -89,6 +89,7 @@ export const graphAlgorithms = {
       nodes: pathNodes,
       edges: pathEdges,
       distance: dist.get(toId) || 0,
+      path: pathNodes.map((n) => n.id),
     }
   },
 
