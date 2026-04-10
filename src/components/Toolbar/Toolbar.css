@@ -1,0 +1,77 @@
+.toolbar-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-section.center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(100, 181, 246, 0.2);
+  margin: 0 4px;
+}
+
+.toolbar-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: #e3f2fd;
+  letter-spacing: 0.02em;
+}
+
+/* View Controls */
+.view-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(100, 181, 246, 0.1);
+}
+
+.zoom-level {
+  min-width: 50px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(227, 242, 253, 0.8);
+  font-variant-numeric: tabular-nums;
+}
+
+.view-toggles {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.view-toggles .btn-icon.active {
+  background: rgba(100, 181, 246, 0.2);
+  color: #64b5f6;
+}
+
+/* Button Styles */
+.toolbar-content .btn-icon {
+  color: rgba(227, 242, 253, 0.6);
+}
+
+.toolbar-content .btn-icon:hover {
+  color: #64b5f6;
+  background: rgba(100, 181, 246, 0.1);
+}
+
+.toolbar-content .btn-icon.active {
+  color: #64b5f6;
+}
