@@ -25,8 +25,15 @@ function initializeApp() {
   console.log('Default session initialized')
   
   // 初始化 AI 配置
-  const { settings } = useUIStore.getState()
-  const apiKey = settings.ai.apiKeys[settings.ai.defaultProvider]
+  const state = useUIStore.getState()
+  const settings = state?.settings
+  
+  if (!settings?.ai) {
+    console.log('AI settings not available')
+    return
+  }
+  
+  const apiKey = settings.ai.apiKeys?.[settings.ai.defaultProvider]
   
   if (apiKey) {
     aiService.setApiKey(settings.ai.defaultProvider, apiKey)

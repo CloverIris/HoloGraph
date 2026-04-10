@@ -1,8 +1,9 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import fs from 'fs'
+import { fileURLToPath } from 'url'
 
+// ESM compatible __dirname
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -33,29 +34,46 @@ function createWindow() {
     mainWindow.webContents.openDevTools()
   } else {
     // Production: load from asar or file system
-    // __dirname is dist-electron/ (in asar)
-    // Need to go up one level to reach dist/
-    const indexPath = path.resolve(__dirname, '..', 'dist', 'index.html')
-    console.log('Loading index from:', indexPath)
-    console.log('__dirname:', __dirname)
-    console.log('Current directory contents:', fs.readdirSync(path.resolve(__dirname, '..')))
+    // Try multiple path strategies
+    const possiblePaths = [
+      // Standard asar structure
+      path.join(process.resourcesPath, 'app.asar', 'dist', 'index.html'),
+      // Unpacked asar
+      path.join(app.getAppPath(), 'dist', 'index.html'),
+      // Relative to __dirname (dist-electron)
+      path.join(__dirname, '..', 'dist', 'index.html'),
+      // Relative to current file
+      path.join(__dirname, 'dist', 'index.html'),
+    ]
     
-    // Check if file exists
-    if (!fs.existsSync(indexPath)) {
-      console.error('Index file not found at:', indexPath)
-      // Try alternative paths
-      const altPath1 = path.resolve(__dirname, 'dist', 'index.html')
-      const altPath2 = path.resolve(process.resourcesPath, 'dist', 'index.html')
-      const altPath3 = path.resolve(app.getAppPath(), 'dist', 'index.html')
-      
-      console.log('Trying alternative paths:')
-      console.log('  alt1:', altPath1, 'exists:', fs.existsSync(altPath1))
-      console.log('  alt2:', altPath2, 'exists:', fs.existsSync(altPath2))
-      console.log('  alt3:', altPath3, 'exists:', fs.existsSync(altPath3))
-      console.log('  resourcesPath:', process.resourcesPath)
-      console.log('  appPath:', app.getAppPath())
+    console.log('__dirname (ESM):', __dirname)
+    console.log('resourcesPath:', process.resourcesPath)
+    console.log('appPath:', app.getAppPath())
+    console.log('Checking possible paths:')
+    
+    let indexPath: string | null = null
+    for (const p of possiblePaths) {
+      const exists = fs.existsSync(p)
+      console.log(`  ${exists ? '✓' : '✗'} ${p}`)
+      if (exists && !indexPath) {
+        indexPath = p
+      }
     }
     
+    if (!indexPath) {
+      console.error('Could not find index.html in any location!')
+      mainWindow.loadURL(`data:text/html,
+        <html>
+          <body style="background: #0a0a0f; color: #fff; font-family: sans-serif; padding: 20px;">
+            <h1>Error: Application files not found</h1>
+            <p>Please check the installation.</p>
+          </body>
+        </html>
+      `)
+      return
+    }
+    
+    console.log('Loading from:', indexPath)
     mainWindow.loadFile(indexPath)
   }
 
@@ -91,10 +109,6 @@ function createWindow() {
     console.log('DOM ready')
   })
 
-  mainWindow.webContents.on('crashed', () => {
-    console.error('Renderer process crashed')
-  })
-
   // Handle window closed
   mainWindow.on('closed', () => {
     mainWindow = null
@@ -104,8 +118,6 @@ function createWindow() {
 // Initialize app
 app.whenReady().then(() => {
   console.log('App ready, creating window...')
-  console.log('resourcesPath:', process.resourcesPath)
-  console.log('appPath:', app.getAppPath())
   createWindow()
 
   app.on('activate', () => {
@@ -124,17 +136,14 @@ app.on('window-all-closed', () => {
 
 // IPC handlers
 ipcMain.handle('get-graph-data', () => {
-  // Return empty data - graph data is now managed by the frontend
   return { nodes: [], edges: [] }
 })
 
 ipcMain.handle('save-graph-data', async (_, data) => {
-  // Save to a file
   const { filePath } = await dialog.showSaveDialog({
     filters: [{ name: 'JSON', extensions: ['json'] }]
   })
   if (filePath) {
-    const fs = await import('fs')
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2))
   }
   return { success: !!filePath }
@@ -153,7 +162,6 @@ ipcMain.handle('import-graph', async () => {
     properties: ['openFile']
   })
   if (filePaths && filePaths.length > 0) {
-    const fs = await import('fs')
     const data = fs.readFileSync(filePaths[0], 'utf-8')
     return { data, canceled: false }
   }
