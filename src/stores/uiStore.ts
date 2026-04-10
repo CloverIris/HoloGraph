@@ -69,12 +69,13 @@ interface UIStateExtended extends UIState {
   toggleLODIndicator: () => void
   toggleStreamAnimations: () => void
   setDarkMode: (enabled: boolean) => void
+  getActiveSession: () => null
 }
 
 export const useUIStore = create<UIStateExtended>()(
   devtools(
     persist(
-      (set, get) => ({
+      (set) => ({
         // UI 状态
         sidebarOpen: true,
         rightPanelOpen: true,
@@ -182,6 +183,8 @@ export const useUIStore = create<UIStateExtended>()(
         toggleStreamAnimations: () => {
           set((state) => ({ streamAnimations: !state.streamAnimations }))
         },
+        
+        getActiveSession: () => null,
       }),
       {
         name: 'ui-store',

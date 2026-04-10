@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo } from 'react'
+import { useRef, useState, useCallback } from 'react'
 import { useGraphStore } from '@stores/graphStore'
 import { useUIStore } from '@stores/uiStore'
 import { ContextMenu } from '@components/ContextMenu'
@@ -181,7 +181,8 @@ export function GraphCanvas() {
     if (contextMenu?.node) {
       createAIResponseNode({
         parentId: contextMenu.node.id,
-        sessionId: contextMenu.node.metadata?.sessionId,
+        sessionId: contextMenu.node.metadata?.sessionId || '',
+        aiConfig: contextMenu.node.metadata?.aiConfig || { provider: 'openai', model: 'gpt-4o-mini' },
       })
     }
   }, [contextMenu, createAIResponseNode])
@@ -190,7 +191,7 @@ export function GraphCanvas() {
     if (contextMenu?.node) {
       createBranchNode({
         parentId: contextMenu.node.id,
-        sessionId: contextMenu.node.metadata?.sessionId,
+        sessionId: contextMenu.node.metadata?.sessionId || '',
       })
     }
   }, [contextMenu, createBranchNode])
@@ -255,10 +256,7 @@ export function GraphCanvas() {
     )
   }
 
-  // Get inline editing node
-  const inlineEditingNode = useMemo(() => {
-    return inlineEditingNodeId ? nodes.find((n) => n.id === inlineEditingNodeId) : null
-  }, [inlineEditingNodeId, nodes])
+  // Get inline editing node (used in rendering below via inlineEditingNodeId)
 
   return (
     <div 

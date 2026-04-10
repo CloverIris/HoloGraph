@@ -21,9 +21,9 @@ export function Toolbar() {
     toggleSidebar, 
     toggleRightPanel, 
     showLabels, 
-    toggleShowLabels, 
+    toggleLabels, 
     showClusters, 
-    toggleShowClusters 
+    toggleClusters 
   } = useUIStore()
 
   const handleZoomIn = () => {
@@ -67,14 +67,14 @@ export function Toolbar() {
         <div className="view-toggles">
           <button 
             className={`btn-icon ${showLabels ? 'active' : ''}`}
-            onClick={toggleShowLabels}
+            onClick={toggleLabels}
             title="显示标签"
           >
             <Target size={18} />
           </button>
           <button 
             className={`btn-icon ${showClusters ? 'active' : ''}`}
-            onClick={toggleShowClusters}
+            onClick={toggleClusters}
             title="显示聚类"
           >
             <GitBranch size={18} />

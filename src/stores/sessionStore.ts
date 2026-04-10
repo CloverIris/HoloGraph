@@ -1,12 +1,11 @@
 import { create } from 'zustand'
-import { devtools, persist } from 'zustand/middleware'
+import { devtools } from 'zustand/middleware'
 import type { 
   ConversationSession, 
   SessionConfig, 
   SessionStats,
   KnowledgeNode,
   KnowledgeEdge,
-  AIConfig 
 } from '@mytypes'
 
 // 默认会话配置

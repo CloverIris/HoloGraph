@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useUIStore } from '@stores/uiStore'
 import { aiService } from '@services/aiService'
+import type { AIProvider } from '@mytypes'
 import { Key, Save, TestTube, AlertCircle, Check } from 'lucide-react'
 import './AISettings.css'
 
@@ -26,11 +27,9 @@ export function AISettings() {
   ]
 
   const handleSave = () => {
-    // 初始化 AI Provider
+    // 设置 AI API Key
     if (formData.apiKey) {
-      aiService.initializeProvider(formData.provider as any, {
-        apiKey: formData.apiKey,
-      })
+      aiService.setApiKey(formData.provider as any, formData.apiKey)
     }
     
     // 更新设置
@@ -61,10 +60,8 @@ export function AISettings() {
     setTestMessage('')
     
     try {
-      // 临时初始化 provider
-      aiService.initializeProvider(formData.provider as any, {
-        apiKey: formData.apiKey,
-      })
+      // 临时设置 API key
+      aiService.setApiKey(formData.provider as any, formData.apiKey)
       
       const response = await aiService.chat(
         [{ role: 'user', content: 'Say "HoloGraph AI test successful" in 5 words or less.' }],
@@ -100,11 +97,12 @@ export function AISettings() {
         <select
           value={formData.provider}
           onChange={(e) => {
+            const provider = e.target.value as AIProvider
             setFormData({
               ...formData,
-              provider: e.target.value,
-              model: providers.find((p) => p.id === e.target.value)?.models[0] || '',
-              apiKey: settings.ai.apiKeys[e.target.value] || '',
+              provider,
+              model: providers.find((p) => p.id === provider)?.models[0] || '',
+              apiKey: settings.ai.apiKeys[provider] || '',
             })
           }}
         >

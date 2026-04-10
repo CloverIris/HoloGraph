@@ -13,27 +13,33 @@ import {
   Search,
   Command
 } from 'lucide-react'
-import { useUIStore, TabType } from '@stores/uiStore'
+import { useUIStore } from '@stores/uiStore'
 import { useGraphStore } from '@stores/graphStore'
 import type { NodeType } from '@mytypes'
 import './Sidebar.css'
 
-const nodeTypeIcons: Record<NodeType, React.ReactNode> = {
+const nodeTypeIcons: Partial<Record<NodeType, React.ReactNode>> = {
   concept: <Network size={16} />,
   note: <FileText size={16} />,
   code: <Code size={16} />,
   idea: <Lightbulb size={16} />,
   tweet: <MessageSquare size={16} />,
   reference: <Layers size={16} />,
+  block: <FileText size={16} />,
+  'ai-response': <MessageSquare size={16} />,
+  branch: <Network size={16} />,
 }
 
-const nodeTypeLabels: Record<NodeType, string> = {
+const nodeTypeLabels: Partial<Record<NodeType, string>> = {
   concept: 'Concept',
   note: 'Note',
   code: 'Code',
   idea: 'Idea',
   tweet: 'Tweet',
   reference: 'Reference',
+  block: 'Block',
+  'ai-response': 'AI Response',
+  branch: 'Branch',
 }
 
 export function Sidebar() {
@@ -51,10 +57,10 @@ export function Sidebar() {
   })
 
   const tabs = [
-    { id: 'all' as TabType, label: 'All', icon: <Network size={18} /> },
-    { id: 'concepts' as TabType, label: 'Concepts', icon: <Lightbulb size={18} /> },
-    { id: 'code' as TabType, label: 'Code', icon: <Code size={18} /> },
-    { id: 'notes' as TabType, label: 'Notes', icon: <FileText size={18} /> },
+    { id: 'all' as const, label: 'All', icon: <Network size={18} /> },
+    { id: 'sessions' as const, label: 'Sessions', icon: <Lightbulb size={18} /> },
+    { id: 'actions' as const, label: 'Actions', icon: <Code size={18} /> },
+    { id: 'knowledge' as const, label: 'Knowledge', icon: <FileText size={18} /> },
   ]
 
   return (

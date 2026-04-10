@@ -36,7 +36,7 @@ export function NodePanel() {
     nodes, 
     selectedNodeId,
     selectNode,
-    addEdge,
+    createEdge,
     getNodeNeighbors,
     createAIResponseNode,
     createBranchNode,
@@ -110,7 +110,7 @@ export function NodePanel() {
   }
 
   const handleConnectTo = async (targetId: string) => {
-    await addEdge({
+    await createEdge({
       source: selectedNode.id,
       target: targetId,
       strength: 0.5,
@@ -352,7 +352,7 @@ export function NodePanel() {
                 const session = getActiveSession()
                 const aiNode = await createAIResponseNode({
                   parentId: selectedNode.id,
-                  sessionId: session?.id,
+                  sessionId: session?.id || '',
                 })
                 
                 // Build context and stream
@@ -360,7 +360,7 @@ export function NodePanel() {
                 await streamingUpdater.startStreaming(
                   aiNode.id,
                   messages,
-                  aiNode.metadata?.aiConfig
+                  aiNode.metadata?.aiConfig || {}
                 )
               } catch (error) {
                 console.error('Failed to ask AI:', error)
@@ -373,7 +373,7 @@ export function NodePanel() {
               const session = getActiveSession()
               await createBranchNode({
                 parentId: selectedNode.id,
-                sessionId: session?.id,
+                sessionId: session?.id || '',
               })
             }}
             onSummarize={async () => {
@@ -417,7 +417,7 @@ export function NodePanel() {
 }
 
 function NewNodePanel({ onClose }: { onClose: () => void }) {
-  const { addNode, selectNode } = useGraphStore()
+  const { createNode, selectNode } = useGraphStore()
   const [nodeData, setNodeData] = useState<Partial<KnowledgeNode>>({
     label: '',
     content: '',
@@ -428,7 +428,7 @@ function NewNodePanel({ onClose }: { onClose: () => void }) {
 
   const handleCreate = async () => {
     if (!nodeData.label?.trim()) return
-    const newNode = await addNode({
+    const newNode = await createNode({
       label: nodeData.label,
       content: nodeData.content || '',
       type: nodeData.type as NodeType,

@@ -29,21 +29,15 @@ function initializeApp() {
   const apiKey = settings.ai.apiKeys[settings.ai.defaultProvider]
   
   if (apiKey) {
-    try {
-      aiService.initializeProvider(settings.ai.defaultProvider, {
-        apiKey,
-      })
-      aiService.setDefaultConfig({
-        provider: settings.ai.defaultProvider,
-        model: settings.ai.defaultModel,
-        temperature: settings.ai.temperature,
-        maxTokens: settings.ai.maxTokens,
-        stream: settings.ai.streamEnabled,
-      })
-      console.log('AI provider initialized:', settings.ai.defaultProvider)
-    } catch (error) {
-      console.warn('Failed to initialize AI provider:', error)
-    }
+    aiService.setApiKey(settings.ai.defaultProvider, apiKey)
+    aiService.setDefaultConfig({
+      provider: settings.ai.defaultProvider,
+      model: settings.ai.defaultModel,
+      temperature: settings.ai.temperature,
+      maxTokens: settings.ai.maxTokens,
+      stream: settings.ai.streamEnabled,
+    })
+    console.log('AI provider configured:', settings.ai.defaultProvider)
   } else {
     console.log('No API key configured for AI provider')
   }

@@ -47,7 +47,8 @@ function App() {
       if (selectedNodeId) {
         createAIResponseNode({
           parentId: selectedNodeId,
-          sessionId: activeSession?.id,
+          sessionId: activeSession?.id || '',
+          aiConfig: { provider: 'openai', model: 'gpt-4o-mini' },
         })
       }
     },
@@ -55,7 +56,7 @@ function App() {
       if (selectedNodeId) {
         createBranchNode({
           parentId: selectedNodeId,
-          sessionId: activeSession?.id,
+          sessionId: activeSession?.id || '',
         })
       }
     },
@@ -91,7 +92,7 @@ function App() {
     if (isLoading) return
     
     const interval = setInterval(() => {
-      storageService.save({ nodes, edges })
+      storageService.saveAll({ nodes, edges })
     }, 30000) // Auto-save every 30 seconds
 
     return () => clearInterval(interval)

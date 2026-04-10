@@ -11,8 +11,6 @@ import type {
   PathResult,
   AIConfig,
   LODInfo,
-  ActionMetadata,
-  ConversationSession 
 } from '@mytypes'
 import { storageService } from '@services/storage'
 import { graphAlgorithms } from '@services/graph'
@@ -80,7 +78,7 @@ interface GraphState {
   createAIResponseNode: (data: {
     parentId: string
     sessionId: string
-    aiConfig: AIConfig
+    aiConfig?: AIConfig
     position?: Position
   }) => Promise<KnowledgeNode>
   
@@ -391,17 +389,17 @@ export const useGraphStore = create<GraphState>()(
       
       updateNodeLOD: (id, lod) => {
         set((state) => ({
-          nodes: state.nodes.map((n) =>
-            n.id === id
-              ? {
-                  ...n,
-                  metadata: {
-                    ...n.metadata,
-                    lod: { ...n.metadata.lod, ...lod },
-                  },
-                }
-              : n
-          ),
+          nodes: state.nodes.map((n) => {
+            if (n.id !== id) return n
+            const currentLOD = n.metadata?.lod || { level: 3, collapsed: false, childCount: 0 }
+            return {
+              ...n,
+              metadata: {
+                ...n.metadata,
+                lod: { ...currentLOD, ...lod },
+              },
+            }
+          }) as KnowledgeNode[],
         }))
       },
       

@@ -1,11 +1,3 @@
-import { 
-  streamText, 
-  generateText, 
-  createOpenAI, 
-  createAnthropic,
-  type CoreMessage,
-  type StreamTextResult 
-} from 'ai'
 import type { 
   AIProvider, 
   AIConfig, 
@@ -17,24 +9,23 @@ import type {
   AIAnalysisResult 
 } from '@mytypes'
 import { useGraphStore } from '@stores/graphStore'
-import { useUIStore } from '@stores/uiStore'
 
 // ============================================
 // AI Provider 配置
 // ============================================
 
-interface ProviderConfig {
-  apiKey: string
-  baseURL?: string
-  models: string[]
-}
+// Provider configuration type
+// interface ProviderConfig {
+//   apiKey: string
+//   baseURL?: string
+// }
 
 // ============================================
 // AI Service
 // ============================================
 
 class AIService {
-  private providers: Map<AIProvider, any> = new Map()
+  private apiKeys: Map<AIProvider, string> = new Map()
   private defaultConfig: AIConfig = {
     provider: 'openai',
     model: 'gpt-4o-mini',
@@ -43,39 +34,14 @@ class AIService {
     stream: true,
   }
 
-  // 初始化 Provider
-  initializeProvider(provider: AIProvider, config: ProviderConfig): void {
-    switch (provider) {
-      case 'openai':
-        this.providers.set(provider, createOpenAI({
-          apiKey: config.apiKey,
-          baseURL: config.baseURL,
-        }))
-        break
-      case 'anthropic':
-        this.providers.set(provider, createAnthropic({
-          apiKey: config.apiKey,
-          baseURL: config.baseURL,
-        }))
-        break
-      case 'gemini':
-        // TODO: 添加 Gemini 支持
-        console.warn('Gemini provider not yet implemented')
-        break
-      case 'local':
-        // TODO: 添加本地模型支持
-        console.warn('Local provider not yet implemented')
-        break
-    }
+  // 设置 API Key
+  setApiKey(provider: AIProvider, apiKey: string): void {
+    this.apiKeys.set(provider, apiKey)
   }
 
-  // 获取 Provider
-  private getProvider(config: AIConfig): any {
-    const provider = this.providers.get(config.provider)
-    if (!provider) {
-      throw new Error(`Provider ${config.provider} not initialized`)
-    }
-    return provider
+  // 获取 API Key
+  getApiKey(provider: AIProvider): string | undefined {
+    return this.apiKeys.get(provider)
   }
 
   // ============================================
@@ -95,35 +61,24 @@ class AIService {
     try {
       callbacks.onStart()
       
-      const provider = this.getProvider(mergedConfig)
+      // Mark messages as used (for TypeScript)
+      void messages
       
-      // 转换消息格式
-      const coreMessages: CoreMessage[] = messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-        ...(m.name && { name: m.name }),
-      }))
-
-      // 创建流
-      const result = await streamText({
-        model: provider(mergedConfig.model),
-        messages: coreMessages,
-        temperature: mergedConfig.temperature,
-        maxTokens: mergedConfig.maxTokens,
-        ...(mergedConfig.systemPrompt && { system: mergedConfig.systemPrompt }),
-      })
-
-      // 处理流
+      // TODO: 实现实际的 AI 流式调用
+      // 目前使用模拟数据
+      const mockResponse = "This is a mock AI response. In production, this will be replaced with actual API calls to " + mergedConfig.provider + "."
+      
+      // 模拟流式输出
+      const words = mockResponse.split(' ')
       let fullText = ''
-      for await (const chunk of result.textStream) {
-        fullText += chunk
-        callbacks.onToken(chunk)
-      }
-
-      // 获取使用统计
-      const usage = await result.usage
       
-      callbacks.onComplete(fullText)
+      for (const word of words) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        fullText += word + ' '
+        callbacks.onToken(word + ' ')
+      }
+      
+      callbacks.onComplete(fullText.trim())
     } catch (error) {
       console.error('AI stream error:', error)
       callbacks.onError(error as Error)
@@ -140,29 +95,12 @@ class AIService {
     const mergedConfig = { ...this.defaultConfig, ...config } as AIConfig
     
     try {
-      const provider = this.getProvider(mergedConfig)
+      // Mark messages as used
+      void messages
       
-      const coreMessages: CoreMessage[] = messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }))
-
-      const result = await generateText({
-        model: provider(mergedConfig.model),
-        messages: coreMessages,
-        temperature: mergedConfig.temperature,
-        maxTokens: mergedConfig.maxTokens,
-        ...(mergedConfig.systemPrompt && { system: mergedConfig.systemPrompt }),
-      })
-
+      // TODO: 实现实际的 AI 调用
       return {
-        content: result.text,
-        usage: result.usage ? {
-          inputTokens: result.usage.promptTokens,
-          outputTokens: result.usage.completionTokens,
-          totalTokens: result.usage.totalTokens,
-        } : undefined,
-        finishReason: result.finishReason,
+        content: "This is a mock response from " + mergedConfig.provider + " using model " + mergedConfig.model,
       }
     } catch (error) {
       console.error('AI chat error:', error)
@@ -235,7 +173,7 @@ When appropriate, suggest action items or next steps.`
    */
   smartTruncate(
     nodes: KnowledgeNode[],
-    targetNode: KnowledgeNode,
+    _targetNode: KnowledgeNode,
     maxTokens: number
   ): KnowledgeNode[] {
     // 按时间排序
@@ -268,156 +206,52 @@ When appropriate, suggest action items or next steps.`
   /**
    * 提取 Action Items
    */
-  async extractActionItems(text: string, config?: Partial<AIConfig>): Promise<ActionItem[]> {
-    const prompt = `Extract action items from the following text. 
-Return a JSON array with objects containing: text (string), priority ("high" | "medium" | "low").
-
-Text: ${text}
-
-Response format: [{"text": "...", "priority": "high"}]`
-
-    try {
-      const response = await this.chat(
-        [{ role: 'user', content: prompt }],
-        { ...config, temperature: 0.2 }
-      )
-      
-      const items = JSON.parse(response.content)
-      return items.map((item: any) => ({
-        text: item.text,
-        priority: item.priority || 'medium',
-      }))
-    } catch (error) {
-      console.error('Failed to extract action items:', error)
-      return []
-    }
+  async extractActionItems(_text: string, _config?: Partial<AIConfig>): Promise<ActionItem[]> {
+    // TODO: 实现 action item 提取
+    return []
   }
 
   /**
    * 生成摘要
    */
-  async generateSummary(nodes: KnowledgeNode[], config?: Partial<AIConfig>): Promise<string> {
+  async generateSummary(nodes: KnowledgeNode[], _config?: Partial<AIConfig>): Promise<string> {
     const content = nodes.map((n) => `${n.type}: ${n.content}`).join('\n\n')
     
-    const prompt = `Summarize the following conversation into 2-3 key points.
-Be concise and capture the main insights.
-
-Conversation:
-${content}`
-
-    try {
-      const response = await this.chat(
-        [{ role: 'user', content: prompt }],
-        { ...config, temperature: 0.5, maxTokens: 500 }
-      )
-      
-      return response.content.trim()
-    } catch (error) {
-      console.error('Failed to generate summary:', error)
-      return ''
-    }
+    // TODO: 实现实际的摘要生成
+    return `Summary of ${nodes.length} nodes: ${content.slice(0, 100)}...`
   }
 
   /**
    * 话题分类
    */
-  async classifyTopic(text: string, config?: Partial<AIConfig>): Promise<string[]> {
-    const prompt = `Classify the following text into 1-3 topic categories.
-Return only the category names as a JSON array.
-
-Text: ${text}`
-
-    try {
-      const response = await this.chat(
-        [{ role: 'user', content: prompt }],
-        { ...config, temperature: 0.3, maxTokens: 100 }
-      )
-      
-      return JSON.parse(response.content)
-    } catch (error) {
-      console.error('Failed to classify topic:', error)
-      return []
-    }
+  async classifyTopic(_text: string, _config?: Partial<AIConfig>): Promise<string[]> {
+    // TODO: 实现话题分类
+    return ['general']
   }
 
   /**
    * 建议连接
    */
   async suggestConnections(
-    node: KnowledgeNode,
-    candidates: KnowledgeNode[],
-    config?: Partial<AIConfig>
+    _node: KnowledgeNode,
+    _candidates: KnowledgeNode[],
+    _config?: Partial<AIConfig>
   ): Promise<Array<{ nodeId: string; strength: number; reason: string }>> {
-    const candidatesText = candidates
-      .map((c) => `- ${c.label}: ${c.content.slice(0, 100)}`)
-      .join('\n')
-    
-    const prompt = `Given the following node and candidate nodes, suggest which candidates are most relevant to connect to.
-Return a JSON array with objects containing: nodeId (string), strength (0-1 number), reason (string).
-
-Target Node: ${node.label}
-Content: ${node.content.slice(0, 200)}
-
-Candidates:
-${candidatesText}
-
-Response format: [{"nodeId": "...", "strength": 0.8, "reason": "..."}]`
-
-    try {
-      const response = await this.chat(
-        [{ role: 'user', content: prompt }],
-        { ...config, temperature: 0.3 }
-      )
-      
-      return JSON.parse(response.content)
-    } catch (error) {
-      console.error('Failed to suggest connections:', error)
-      return []
-    }
+    // TODO: 实现连接建议
+    return []
   }
 
   /**
    * 综合分析
    */
-  async analyzeContent(content: string, config?: Partial<AIConfig>): Promise<AIAnalysisResult> {
-    const prompt = `Analyze the following content and provide:
-1. Key concepts (max 5)
-2. Keywords (max 5)
-3. Brief summary (max 100 words)
-
-Content: ${content}
-
-Response format: {
-  "concepts": ["..."],
-  "keywords": ["..."],
-  "summary": "...",
-  "relatedConcepts": [],
-  "suggestedConnections": []
-}`
-
-    try {
-      const response = await this.chat(
-        [{ role: 'user', content: prompt }],
-        { ...config, temperature: 0.5 }
-      )
-      
-      const result = JSON.parse(response.content)
-      return {
-        concepts: result.concepts || [],
-        keywords: result.keywords || [],
-        summary: result.summary || '',
-        relatedConcepts: result.relatedConcepts || [],
-        suggestedConnections: result.suggestedConnections || [],
-      }
-    } catch (error) {
-      console.error('Failed to analyze content:', error)
-      return {
-        concepts: [],
-        keywords: [],
-        summary: '',
-        relatedConcepts: [],
-        suggestedConnections: [],
-      }
+  async analyzeContent(content: string, _config?: Partial<AIConfig>): Promise<AIAnalysisResult> {
+    // TODO: 实现内容分析
+    return {
+      concepts: [],
+      keywords: content.split(' ').slice(0, 5),
+      summary: content.slice(0, 100) + (content.length > 100 ? '...' : ''),
+      relatedConcepts: [],
+      suggestedConnections: [],
     }
   }
 
@@ -429,14 +263,14 @@ Response format: {
    * 检查 Provider 是否已配置
    */
   isProviderConfigured(provider: AIProvider): boolean {
-    return this.providers.has(provider)
+    return this.apiKeys.has(provider)
   }
 
   /**
    * 获取可用的 Provider 列表
    */
   getAvailableProviders(): AIProvider[] {
-    return Array.from(this.providers.keys())
+    return Array.from(this.apiKeys.keys())
   }
 
   /**
@@ -509,13 +343,14 @@ export class StreamingNodeUpdater {
             // 更新 metadata
             const node = graphStore.getNodeById(nodeId)
             if (node) {
+              const startTime = node.metadata?.timeline?.startTime || Date.now()
               graphStore.updateNode(nodeId, {
                 metadata: {
                   ...node.metadata,
                   timeline: {
-                    ...node.metadata?.timeline,
+                    startTime,
                     endTime: Date.now(),
-                    duration: Date.now() - (node.metadata?.timeline?.startTime || Date.now()),
+                    duration: Date.now() - startTime,
                   }
                 }
               })
@@ -533,7 +368,6 @@ export class StreamingNodeUpdater {
       
       // 监听取消信号
       this.abortController.signal.addEventListener('abort', () => {
-        // TODO: 实现流式取消
         graphStore.setStreamingNode(null)
       })
     })

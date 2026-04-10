@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Search, X, Sparkles, Command } from 'lucide-react'
 import { useGraphStore } from '@stores/graphStore'
 import { useUIStore } from '@stores/uiStore'
-import { dbService } from '@services/db'
 import type { KnowledgeNode } from '@mytypes'
 import './SearchBox.css'
 
@@ -27,21 +26,15 @@ export function SearchBox() {
     
     setIsSearching(true)
     try {
-      // Try database search first
-      const dbResults = await dbService.searchNodes(searchQuery)
-      if (dbResults.length > 0) {
-        setResults(dbResults.slice(0, 8))
-      } else {
-        // Fallback to client-side search
-        const filtered = nodes.filter((n) =>
-          n.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          n.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          n.tags.some((t: string) => t.toLowerCase().includes(searchQuery.toLowerCase()))
-        )
-        setResults(filtered.slice(0, 8))
-      }
+      // Client-side search
+      const filtered = nodes.filter((n) =>
+        n.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        n.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        n.tags.some((t: string) => t.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+      setResults(filtered.slice(0, 8))
     } catch (error) {
-      // Client-side fallback
+      // Clear results on error
       const filtered = nodes.filter((n) =>
         n.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
         n.content.toLowerCase().includes(searchQuery.toLowerCase())
