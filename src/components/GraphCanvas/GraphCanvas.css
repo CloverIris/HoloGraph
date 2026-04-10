@@ -50,6 +50,43 @@
   animation: pulse-glow 1.5s ease-in-out infinite;
 }
 
+/* Node content preview */
+.node-content-preview {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.node-content-preview.ai {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 10px;
+  -webkit-line-clamp: 3;
+}
+
+/* Block node specific */
+.node-block rect {
+  transition: all 0.2s ease;
+}
+
+.node-block:hover rect {
+  filter: brightness(1.1);
+}
+
+/* AI node specific */
+.node-ai circle {
+  transition: all 0.2s ease;
+}
+
+.node-ai:hover circle {
+  filter: brightness(1.2);
+}
+
 .node.dimmed {
   opacity: 0.25;
 }

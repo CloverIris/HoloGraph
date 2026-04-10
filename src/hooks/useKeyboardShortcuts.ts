@@ -1,7 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 interface ShortcutHandlers {
   onNewNode?: () => void
+  onNewBlock?: () => void
+  onAskAI?: () => void
+  onCreateBranch?: () => void
   onSave?: () => void
   onSearch?: () => void
   onDelete?: () => void
@@ -30,9 +33,25 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
 
       switch (e.key.toLowerCase()) {
         case 'n':
-          if (isMeta && handlers.onNewNode) {
+          if (isMeta && !e.shiftKey && handlers.onNewNode) {
             e.preventDefault()
             handlers.onNewNode()
+          }
+          if (isMeta && e.shiftKey && handlers.onNewBlock) {
+            e.preventDefault()
+            handlers.onNewBlock()
+          }
+          break
+        case 'enter':
+          if (isMeta && handlers.onAskAI) {
+            e.preventDefault()
+            handlers.onAskAI()
+          }
+          break
+        case 'b':
+          if (isMeta && handlers.onCreateBranch) {
+            e.preventDefault()
+            handlers.onCreateBranch()
           }
           break
         case 's':
@@ -155,5 +174,3 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T)
 
   return [storedValue, setValue]
 }
-
-import { useState } from 'react'
